@@ -17,8 +17,9 @@
           </button>
         </div>
 
-        <div :class="['input-wrap', { 'has-query': query } ]">
-          <input v-model="query" class="input-search" type="search" placeholder="搜索或输入网址，按回车搜索" />
+        <div :class="['input-wrap', { 'has-query': query, 'has-focus': hasFocus } ]">
+          <input v-model="query" class="input-search" type="search" placeholder="搜索或输入网址，按回车搜索"
+            @focus="hasFocus = true" @blur="hasFocus = false" />
           <div class="input-icon" aria-hidden="true">
             <transition name="icon-slide" mode="out-in">
               <div :key="isLikelyURL(query) ? 'url' : 'search'" class="icon-inner" v-if="query">
@@ -52,6 +53,7 @@ const engines = {
 const query = ref('')
 const engine = ref<string>(localStorage.getItem('kise:engine') || defaultEngine)
 const theme = ref<string>(localStorage.getItem('kise:theme') || 'light')
+const hasFocus = ref(false)
 
 watch(engine, (v) => localStorage.setItem('kise:engine', v))
 watch(theme, (v) => localStorage.setItem('kise:theme', v))
@@ -95,12 +97,14 @@ function onSearch() {
 .bg-dark { background-color: #1e1e1e; }
 .text-light { color: #eee; }
 
+/* basic input appearance */
 .input-search {
   background: transparent;
-  border: 1px solid rgba(0,0,0,0.08);
+  border: none; /* remove native border; we draw animated border in ::before */
   padding: 0.75rem 1rem;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 1rem;
+  line-height:1;
 }
 
 .engine-toggle{display:inline-flex;align-items:center;background:transparent;border-radius:10px;padding:4px;gap:6px}
@@ -109,24 +113,53 @@ function onSearch() {
 .engine-btn:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,0.06)}
 .engine-btn.active{background:var(--accent);color:#fff;box-shadow:0 8px 24px rgba(139,92,246,0.18);transform:translateY(-2px)}
 
-.input-search{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:0.75rem 1rem;border-radius:10px;font-size:1rem;transition:box-shadow .14s ease,border-color .14s ease}
-.input-search:focus{outline:none;box-shadow:0 8px 20px rgba(0,0,0,0.06);border-color:var(--accent)}
-.input-wrap{position:relative}
-.input-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%) translateX(6px);opacity:0;pointer-events:none;transition:transform .18s ease,opacity .18s ease;color:var(--text-dark)}
-.input-icon svg{display:block}
-.input-icon-enter-active,.input-icon-leave-active{transition:opacity .18s ease,transform .18s ease}
+/* input-wrap: we draw an animated border/highlight with ::before so icon is not affected */
+.input-wrap{position:relative;flex:1}
+.input-wrap::before{
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow: 0 0 0 0 rgba(139,92,246,0);
+  transition: box-shadow .28s cubic-bezier(.2,.8,.2,1), opacity .22s cubic-bezier(.2,.8,.2,1), transform .22s cubic-bezier(.2,.8,.2,1);
+  opacity: 0;
+  transform: scale(0.98);
+}
+.input-wrap.has-focus::before{
+  opacity: 1;
+  transform: scale(1);
+  /* reduced highlight thickness */
+  box-shadow: 0 6px 18px rgba(139,92,246,0.10), 0 0 0 2px rgba(139,92,246,0.06);
+}
 
-/* when .input-wrap has .has-query, show the icon */
-.input-wrap.has-query .input-icon{opacity:1;transform:translateY(-50%) translateX(0)}
-.input-wrap{flex:1}
-.input-search{width:100%;box-sizing:border-box;transition:width .22s cubic-bezier(.2,.8,.2,1),padding-right .22s cubic-bezier(.2,.8,.2,1)}
-.input-wrap.has-query .input-search{width:calc(100% - 56px)}
+/* Ensure the input and icon stack above the animated border */
+.input-wrap .input-search{position:relative;z-index:2;transition:color .22s cubic-bezier(.2,.8,.2,1),transform .22s cubic-bezier(.2,.8,.2,1),letter-spacing .22s cubic-bezier(.2,.8,.2,1)}
+.input-wrap .input-icon{z-index:3}
 
-/* reserve 56px for the icon; center the icon inside that area */
+/* animate input text appearance: color and slight upward nudge when active */
+.input-search{color:rgba(34,34,34,0);}
+.input-wrap.has-focus .input-search,
+.input-wrap.has-query .input-search{
+  color:rgba(34,34,34,1);
+  transform:translateY(-2px);
+  letter-spacing:0.2px;
+}
+.input-search::placeholder{color:rgba(34,34,34,0.45);transition:opacity .2s ease,color .2s ease}
+.input-wrap.has-focus .input-search::placeholder{opacity:0.6}
+
+/* icon area and animation (icon unaffected by border) */
 .input-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%) translateX(8px);opacity:0;pointer-events:none;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .32s cubic-bezier(.2,.8,.2,1);color:var(--text-dark)}
 .input-icon svg{display:block}
 
-/* icon-slide: enter from right -> to center; leave to right (consistent) */
+/* show icon when query exists */
+.input-wrap.has-query .input-icon{opacity:1;transform:translateY(-50%) translateX(0)}
+
+/* input width transition for smooth shrink when icon appears */
+.input-search{width:100%;box-sizing:border-box;transition:width .22s cubic-bezier(.2,.8,.2,1),padding-right .22s cubic-bezier(.2,.8,.2,1)}
+.input-wrap.has-query .input-search{width:calc(100% - 56px)}
+
+/* icon-slide: consistent right->center enter/leave */
 .icon-slide-enter-from{opacity:0;transform:translateX(12px) translateY(0)}
 .icon-slide-enter-to{opacity:1;transform:translateX(0) translateY(0)}
 .icon-slide-leave-from{opacity:1;transform:translateX(0) translateY(0)}

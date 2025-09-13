@@ -121,16 +121,17 @@ function onSearch() {
   inset: 0;
   border-radius: 12px;
   pointer-events: none;
-  box-shadow: 0 0 0 0 rgba(139,92,246,0);
+  /* faint purple outline by default */
+  box-shadow: 0 0 0 1px rgba(139,92,246,0.06);
   transition: box-shadow .28s cubic-bezier(.2,.8,.2,1), opacity .22s cubic-bezier(.2,.8,.2,1), transform .22s cubic-bezier(.2,.8,.2,1);
-  opacity: 0;
-  transform: scale(0.98);
+  opacity: 1;
+  transform: scale(0.995);
 }
 .input-wrap.has-focus::before{
   opacity: 1;
   transform: scale(1);
-  /* reduced highlight thickness */
-  box-shadow: 0 6px 18px rgba(139,92,246,0.10), 0 0 0 2px rgba(139,92,246,0.06);
+  /* enhanced highlight on focus (still subtle) */
+  box-shadow: 0 6px 18px rgba(139,92,246,0.10), 0 0 0 3px rgba(139,92,246,0.10);
 }
 
 /* Ensure the input and icon stack above the animated border */
@@ -145,8 +146,17 @@ function onSearch() {
   transform:translateY(-2px);
   letter-spacing:0.2px;
 }
-.input-search::placeholder{color:rgba(34,34,34,0.45);transition:opacity .2s ease,color .2s ease}
-.input-wrap.has-focus .input-search::placeholder{opacity:0.6}
+.input-search::placeholder{
+  color: rgba(34,34,34,0.45);
+  transition: opacity .32s cubic-bezier(.2,.8,.2,1), color .32s cubic-bezier(.2,.8,.2,1), transform .32s cubic-bezier(.2,.8,.2,1);
+  opacity: 1;
+}
+/* hide placeholder smoothly when focusing or when there's text */
+.input-wrap.has-focus .input-search::placeholder,
+.input-wrap.has-query .input-search::placeholder{
+  opacity: 0;
+  transform: translateY(-4px);
+}
 
 /* icon area and animation (icon unaffected by border) */
 .input-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%) translateX(8px);opacity:0;pointer-events:none;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .32s cubic-bezier(.2,.8,.2,1);color:var(--text-dark)}

@@ -1,7 +1,7 @@
 {
   "name": "kise-tab",
   "type": "module",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.13",
     "material-icons": "^1.13.14",
+    "solarlunar": "^2.0.7",
     "tailwindcss": "^4.1.13",
     "vue": "^3.5.17"
   },

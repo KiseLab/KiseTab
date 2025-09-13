@@ -9,6 +9,8 @@
 	--text-dark: #222;
 	--text-light: #eee;
 	--accent: #8b5cf6;
+	--accent-glow: rgba(139,92,246,0.12);
+	--accent-border: rgba(139,92,246,0.28);
 }
 
 html,body,#app{height:100%;margin:0}
@@ -38,3 +40,33 @@ body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Rob
 .bg-dark{background:var(--bg-dark)}
 .text-dark{color:var(--text-dark)}
 .text-light{color:var(--text-light)}
+
+/* Engine button background pseudo-element helpers */
+.engine-btn{position:relative;overflow:visible}
+.engine-btn::before{
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: 8px;
+	background: transparent;
+	opacity: 0;
+	transition: opacity .45s cubic-bezier(.2,.8,.2,1), background-color .45s cubic-bezier(.2,.8,.2,1);
+	pointer-events: none;
+}
+.engine-btn .svg-wrap{position:relative;z-index:2;display:inline-flex;align-items:center;justify-content:center;transition:color .45s cubic-bezier(.2,.8,.2,1),opacity .36s ease}
+.engine-btn .svg-wrap svg{display:block;transition:filter .45s cubic-bezier(.2,.8,.2,1),opacity .45s cubic-bezier(.2,.8,.2,1)}
+
+/* active state: show background fade and make svg color contrast appropriately */
+.engine-btn.active::before{background:var(--accent);opacity:1}
+.engine-btn.active .svg-wrap{color:#fff}
+.engine-btn .svg-wrap{color:var(--text-dark)}
+
+/* smooth fade when switching active states */
+.engine-btn{transition:box-shadow .22s cubic-bezier(.2,.8,.2,1)}
+.engine-btn .svg-wrap{transition:color .45s cubic-bezier(.2,.8,.2,1),opacity .36s cubic-bezier(.2,.8,.2,1)}
+.engine-btn .svg-wrap svg{transition:fill .45s cubic-bezier(.2,.8,.2,1),opacity .36s cubic-bezier(.2,.8,.2,1)}
+
+/* When engine changes, fade out old background/logo via changing opacity on ::before and svg opacity */
+.engine-btn:not(.active)::before{opacity:0}
+.engine-btn:not(.active) .svg-wrap{opacity:0.9}
+.engine-btn.active .svg-wrap{opacity:1}

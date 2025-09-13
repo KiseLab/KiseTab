@@ -17,7 +17,23 @@
           </button>
         </div>
 
-        <input v-model="query" class="flex-1 input-search" type="search" placeholder="搜索或输入网址，按回车搜索" />
+        <div :class="['input-wrap', { 'has-query': query } ]">
+          <input v-model="query" class="input-search" type="search" placeholder="搜索或输入网址，按回车搜索" />
+          <div class="input-icon" aria-hidden="true">
+            <transition name="icon-slide" mode="out-in">
+              <div :key="isLikelyURL(query) ? 'url' : 'search'" class="icon-inner" v-if="query">
+                <template v-if="isLikelyURL(query)">
+                  <!-- url icon (表示将作为网址跳转) -->
+                  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M440-280H280q-83 0-141.5-58.5T80-480q0-83 58.5-141.5T280-680h160v80H280q-50 0-85 35t-35 85q0 50 35 85t85 35h160v80ZM320-440v-80h320v80H320Zm200 160v-80h160q50 0 85-35t35-85q0-50-35-85t-85-35H520v-80h160q83 0 141.5 58.5T880-480q0 83-58.5 141.5T680-280H520Z"/></svg>
+                </template>
+                <template v-else>
+                  <!-- search icon (表示将作为搜索) -->
+                  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/></svg>
+                </template>
+              </div>
+            </transition>
+          </div>
+        </div>
       </form>
     </div>
   </div>
@@ -31,8 +47,6 @@ const defaultEngine = 'bing_cn'
 const engines = {
   bing_cn: { name: 'Bing （国内版）', url: 'https://cn.bing.com/search?q=%s' },
   google: { name: 'Google', url: 'https://www.google.com/search?q=%s' },
-  duck: { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=%s' },
-  baidu: { name: 'Baidu', url: 'https://www.baidu.com/s?wd=%s' },
 } as const
 
 const query = ref('')
@@ -42,12 +56,36 @@ const theme = ref<string>(localStorage.getItem('kise:theme') || 'light')
 watch(engine, (v) => localStorage.setItem('kise:engine', v))
 watch(theme, (v) => localStorage.setItem('kise:theme', v))
 
+function isLikelyURL(input: string) {
+  if (!input) return false
+  const hasProtocol = /^https?:\/\//i.test(input)
+  if (hasProtocol) return true
+  if (/^www\./i.test(input)) return true
+  // simple tld check: contains a dot and a known-ish TLD
+  if (/\.[a-z]{2,}(\/|$)/i.test(input)) return true
+  return false
+}
+
+function normalizeURL(input: string) {
+  if (/^https?:\/\//i.test(input)) return input
+  return 'https://' + input
+}
+
 function onSearch() {
   const q = query.value.trim()
   if (!q) return
+
+  if (isLikelyURL(q)) {
+    const target = normalizeURL(q)
+    // replace current page
+    window.location.href = target
+    return
+  }
+
   const encoded = encodeURIComponent(q)
   const url = (engines as any)[engine.value].url.replace('%s', encoded)
-  window.open(url, '_blank')
+  // replace current page instead of opening a new tab
+  window.location.href = url
 }
 </script>
 
@@ -73,4 +111,30 @@ function onSearch() {
 
 .input-search{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:0.75rem 1rem;border-radius:10px;font-size:1rem;transition:box-shadow .14s ease,border-color .14s ease}
 .input-search:focus{outline:none;box-shadow:0 8px 20px rgba(0,0,0,0.06);border-color:var(--accent)}
+.input-wrap{position:relative}
+.input-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%) translateX(6px);opacity:0;pointer-events:none;transition:transform .18s ease,opacity .18s ease;color:var(--text-dark)}
+.input-icon svg{display:block}
+.input-icon-enter-active,.input-icon-leave-active{transition:opacity .18s ease,transform .18s ease}
+
+/* when .input-wrap has .has-query, show the icon */
+.input-wrap.has-query .input-icon{opacity:1;transform:translateY(-50%) translateX(0)}
+.input-wrap{flex:1}
+.input-search{width:100%;box-sizing:border-box;transition:width .22s cubic-bezier(.2,.8,.2,1),padding-right .22s cubic-bezier(.2,.8,.2,1)}
+.input-wrap.has-query .input-search{width:calc(100% - 56px)}
+
+/* reserve 56px for the icon; center the icon inside that area */
+.input-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%) translateX(8px);opacity:0;pointer-events:none;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .32s cubic-bezier(.2,.8,.2,1);color:var(--text-dark)}
+.input-icon svg{display:block}
+
+/* icon-slide: enter from right -> to center; leave to right (consistent) */
+.icon-slide-enter-from{opacity:0;transform:translateX(12px) translateY(0)}
+.icon-slide-enter-to{opacity:1;transform:translateX(0) translateY(0)}
+.icon-slide-leave-from{opacity:1;transform:translateX(0) translateY(0)}
+.icon-slide-leave-to{opacity:0;transform:translateX(12px) translateY(0)}
+.icon-slide-enter-active,.icon-slide-leave-active{transition:opacity .32s cubic-bezier(.2,.8,.2,1),transform .32s cubic-bezier(.2,.8,.2,1)}
+
+/* vertical nudge during switch */
+.icon-inner{display:inline-block}
+.icon-slide-enter-active .icon-inner{transform:translateY(-6px)}
+.icon-slide-leave-active .icon-inner{transform:translateY(6px)}
 </style>

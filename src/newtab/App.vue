@@ -134,6 +134,14 @@ function onSearch() {
   box-shadow: 0 6px 18px rgba(139,92,246,0.10), 0 0 0 3px rgba(139,92,246,0.10);
 }
 
+/* hover effect: soft shadow increase for the whole search control (no movement) */
+.input-wrap:hover::before{
+  box-shadow: 0 10px 30px rgba(139,92,246,0.10), 0 0 0 4px rgba(139,92,246,0.10);
+}
+
+.input-wrap:hover .input-icon{box-shadow:0 10px 30px rgba(0,0,0,0.08)}
+.input-wrap:hover .input-icon svg{filter:drop-shadow(0 4px 12px rgba(0,0,0,0.06))}
+
 /* Ensure the input and icon stack above the animated border */
 .input-wrap .input-search{position:relative;z-index:2;transition:color .22s cubic-bezier(.2,.8,.2,1),transform .22s cubic-bezier(.2,.8,.2,1),letter-spacing .22s cubic-bezier(.2,.8,.2,1)}
 .input-wrap .input-icon{z-index:3}

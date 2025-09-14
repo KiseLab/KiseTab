@@ -1,8 +1,8 @@
 <template>
   <div :class="['min-h-screen flex items-center justify-center', theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark']">
-    <div class="w-full max-w-xl px-6">
+  <div :class="['w-full max-w-xl px-6', hasFocus ? 'shift-up' : '']">
       <div class="text-center mb-12">
-        <div class="clock">
+        <div :class="['clock', hasFocus ? 'clock-collapsed' : '']">
           <div class="time" aria-live="polite">{{ timeStr }}</div>
           <div class="dates">
             <span class="gregorian">{{ gregorian }}</span>
@@ -12,7 +12,7 @@
         </div>
       </div>
 
-      <form @submit.prevent="onSearch" class="flex items-center gap-3">
+  <form @submit.prevent="onSearch" class="flex items-center gap-3 search-panel">
         <div class="engine-toggle" role="tablist" aria-label="搜索引擎选择">
           <button type="button" :class="['engine-btn', engine === 'bing_cn' ? 'active' : '']" @click="engine = 'bing_cn'" title="Microsoft Bing">
             <span class="svg-wrap">
@@ -272,4 +272,29 @@ function onSearch() {
 .time{font-size:4.5rem;line-height:1;font-weight:700;color:var(--text-dark)}
 .dates{margin-top:0.5rem;font-size:1rem;color:rgba(34,34,34,0.7)}
 .dates .sep{color:rgba(34,34,34,0.45)}
+
+/* collapse clock smoothly when input is focused */
+.clock{
+  /* expanded state (explicit) */
+  opacity: 1;
+  transform: translateY(0);
+  margin-bottom: 2.5rem;
+  max-height: 240px; /* ensure room for expanded content */
+  overflow: hidden;
+  /* same duration and small delay for both appear/disappear to keep symmetry */
+  transition: opacity .42s cubic-bezier(.2,.8,.2,1) .08s, transform .42s cubic-bezier(.2,.8,.2,1) .08s, max-height .42s cubic-bezier(.2,.8,.2,1) .08s, margin-bottom .42s cubic-bezier(.2,.8,.2,1) .08s;
+}
+.clock-collapsed{
+  /* collapsed state (same properties inverted) */
+  opacity: 0;
+  transform: translateY(-18px);
+  max-height: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
+
+/* when clock collapses, shift the search panel upward smoothly to take the vacant space */
+.search-panel{transition:transform .42s cubic-bezier(.2,.8,.2,1) .02s, margin-top .42s cubic-bezier(.2,.8,.2,1) .02s}
+.shift-up .search-panel{transform:translateY(-28px)}
 </style>

@@ -44,47 +44,8 @@ let abortCtrl: AbortController | null = null;
 const API_KEY = import.meta.env.VITE_WEATHER_API_KEY || "";
 
 // 国家映射
-const COUNTRY_MAP: Record<string, string> = {
-  CN: "中国",
-};
+import { COUNTRY_MAP, PROVINCE_MAP } from "../utils/regionMaps";
 
-// 省份映射
-const PROVINCE_MAP: Record<string, string> = {
-  Beijing: "北京市",
-  Tianjin: "天津市",
-  Hebei: "河北省",
-  Shanxi: "山西省",
-  InnerMongolia: "内蒙古自治区",
-  Liaoning: "辽宁省",
-  Jilin: "吉林省",
-  Heilongjiang: "黑龙江省",
-  Shanghai: "上海市",
-  Jiangsu: "江苏省",
-  Zhejiang: "浙江省",
-  Anhui: "安徽省",
-  Fujian: "福建省",
-  Jiangxi: "江西省",
-  Shandong: "山东省",
-  Henan: "河南省",
-  Hubei: "湖北省",
-  Hunan: "湖南省",
-  Guangdong: "广东省",
-  Guangxi: "广西壮族自治区",
-  Hainan: "海南省",
-  Chongqing: "重庆市",
-  Sichuan: "四川省",
-  Guizhou: "贵州省",
-  Yunnan: "云南省",
-  Tibet: "西藏自治区",
-  Shaanxi: "陕西省",
-  Gansu: "甘肃省",
-  Qinghai: "青海省",
-  Ningxia: "宁夏回族自治区",
-  Xinjiang: "新疆维吾尔自治区",
-  Taiwan: "台湾省",
-  HongKong: "香港特别行政区",
-  Macao: "澳门特别行政区",
-};
 
 function makeIconUrl(code: string) {
   return `https://openweathermap.org/img/wn/${code}@2x.png`;
@@ -146,7 +107,7 @@ async function fetchWeather(lat: number, lon: number) {
           const provinceName = PROVINCE_MAP[stateRaw] || stateRaw || "";
 
           // 组装显示：优先显示 Country · Province · City（当省存在时），否则 Country · City
-          if (provinceName) {
+          if (provinceName && countryName === "中国") {
             city.value = countryName ? `${countryName} · ${provinceName} · ${cityName}` : `${provinceName} · ${cityName}`;
           } else if (countryName) {
             city.value = `${countryName} · ${cityName}`;

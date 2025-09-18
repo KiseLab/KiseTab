@@ -6,10 +6,16 @@
 
     <template v-else-if="disabled">
       <div class="msg">天气服务已禁用或无法获取地理位置</div>
+      <div class="actions">
+        <button class="retry" @click="retry">重试</button>
+      </div>
     </template>
 
     <template v-else-if="error">
       <div class="msg">{{ error }}</div>
+      <div class="actions">
+        <button class="retry" @click="retry">重试</button>
+      </div>
     </template>
 
     <template v-else>
@@ -41,7 +47,31 @@ const iconUrl = ref<string | null>(null);
 
 let abortCtrl: AbortController | null = null;
 
-const API_KEY = import.meta.env.VITE_WEATHER_API_KEY || "";
+// API key is read at runtime from chrome.storage.local or localStorage.
+const apiKey = ref<string>(import.meta.env.VITE_WEATHER_API_KEY || "");
+
+// remember last successful coords so we don't re-request geolocation on every key change
+const coords = ref<{ lat: number; lon: number } | null>(null);
+
+// storage change listener reference so we can remove it on unmount
+let storageListener: ((changes: any, areaName: string) => void) | null = null;
+
+// helper to read stored key
+async function readApiKeyFromStorage() {
+  try {
+    const win: any = window as any;
+    if (win.chrome && win.chrome.storage && win.chrome.storage.local) {
+      return await new Promise<string>((resolve) => {
+        win.chrome.storage.local.get(["VITE_WEATHER_API_KEY"], (items: any) => {
+          resolve(items?.VITE_WEATHER_API_KEY || localStorage.getItem("VITE_WEATHER_API_KEY") || "");
+        });
+      });
+    }
+  } catch (e) {
+    // ignore
+  }
+  return localStorage.getItem("VITE_WEATHER_API_KEY") || "";
+}
 
 // 国家映射
 import { COUNTRY_MAP, PROVINCE_MAP } from "../utils/regionMaps";
@@ -52,8 +82,10 @@ function makeIconUrl(code: string) {
 }
 
 async function fetchWeather(lat: number, lon: number) {
-  if (!API_KEY) {
-    error.value = "未配置天气 API Key (VITE_WEATHER_API_KEY)";
+  // remember coords for subsequent refetches
+  coords.value = { lat, lon };
+  if (!apiKey.value) {
+    error.value = "未配置天气 API Key (请在扩展弹出窗口中设置)";
     loading.value = false;
     return;
   }
@@ -62,7 +94,7 @@ async function fetchWeather(lat: number, lon: number) {
   const signal = abortCtrl.signal;
 
   try {
-    const onecallUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&lang=zh_cn`;
+  const onecallUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey.value}&lang=zh_cn`;
     const res = await fetch(onecallUrl, { signal });
     if (!res.ok) throw new Error(`天气 API 返回 ${res.status}`);
     const data = await res.json();
@@ -92,7 +124,7 @@ async function fetchWeather(lat: number, lon: number) {
 
     // reverse geocoding to get city name
     try {
-      const revUrl = `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${API_KEY}`;
+  const revUrl = `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey.value}`;
       const r2 = await fetch(revUrl, { signal });
       if (r2.ok) {
         const arr = await r2.json();
@@ -139,6 +171,7 @@ function getLocationAndFetch() {
     (pos) => {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
+      coords.value = { lat, lon };
       fetchWeather(lat, lon);
     },
     (err) => {
@@ -156,14 +189,69 @@ onMounted(() => {
   disabled.value = false;
   error.value = null;
 
-  getLocationAndFetch();
+  // load API key from storage first
+  readApiKeyFromStorage().then((k) => {
+    apiKey.value = k || apiKey.value;
+    if (!apiKey.value) {
+      // no key yet – show hint but keep listening for changes
+      loading.value = false;
+      error.value = "未配置天气 API Key (请在扩展弹出窗口中设置)";
+      return;
+    }
+
+    // if we already have coords (unlikely on first mount) use them, else request location
+    getLocationAndFetch();
+  });
+
+  // listen for storage changes so popup can update the key and trigger a refetch
+  const win: any = window as any;
+  storageListener = (changes: any, areaName: string) => {
+    if (areaName !== "local") return;
+    if (changes.VITE_WEATHER_API_KEY) {
+      const newVal = changes.VITE_WEATHER_API_KEY.newValue || "";
+      apiKey.value = newVal;
+      // reset states and refetch
+      loading.value = true;
+      error.value = null;
+      if (coords.value) {
+        fetchWeather(coords.value.lat, coords.value.lon);
+      } else {
+        getLocationAndFetch();
+      }
+    }
+  };
+
+  if (win.chrome && win.chrome.storage && win.chrome.storage.onChanged && storageListener) {
+    win.chrome.storage.onChanged.addListener(storageListener);
+  }
 });
 
 onUnmounted(() => {
   if (abortCtrl) abortCtrl.abort();
+  const win: any = window as any;
+  if (win.chrome && win.chrome.storage && win.chrome.storage.onChanged && storageListener) {
+    try {
+      win.chrome.storage.onChanged.removeListener(storageListener);
+    } catch (e) {
+      // ignore
+    }
+  }
 });
 
 const cityDisplay = computed(() => city.value);
+
+function retry() {
+  // reset flags and try again
+  loading.value = true;
+  disabled.value = false;
+  error.value = null;
+
+  if (coords.value) {
+    fetchWeather(coords.value.lat, coords.value.lon);
+  } else {
+    getLocationAndFetch();
+  }
+}
 </script>
 
 <style scoped>
@@ -224,6 +312,22 @@ const cityDisplay = computed(() => city.value);
   color: rgba(34, 34, 34, 0.75);
   text-align: center;
 }
+
+.actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+.retry {
+  background: linear-gradient(90deg, var(--accent), #7b61ff);
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.retry:active { transform: translateY(1px); }
 
 /* small screen: hide */
 @media (max-width: 720px) {

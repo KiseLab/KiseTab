@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ApiKeyForm from './components/ApiKeyForm.vue'
 const repo = "https://github.com/KiseLab/KiseTab";
 </script>
 
@@ -8,6 +9,8 @@ const repo = "https://github.com/KiseLab/KiseTab";
       <div class="title">KiseTab</div>
       <div class="subtitle">简洁可定制的新标签页替代 Chrome 插件</div>
     </div>
+
+    <ApiKeyForm />
 
     <div class="footer">
       <span><a :href="repo" target="_blank" class="footer-link">GitHub</a> | © KiseLab</span>

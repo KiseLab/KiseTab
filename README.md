@@ -57,3 +57,19 @@ npm run build
 ## 许可证
 
 [MIT](./LICENSE)
+
+## 额外说明
+
+以下是一些针对天气组件、 API Key 的补充说明，方便开发者和最终用户快速上手：
+
+### 设置 OpenWeather API Key（用户侧）
+
+本扩展不内置任何第三方天气 API Key。请每位用户在扩展的弹出窗口中输入并保存自己的 `OpenWeather` API Key：点击浏览器工具栏扩展图标打开 popup，输入并保存 Key（存储在 `chrome.storage.local`，若不可用回退到 `localStorage`）。
+
+插件会在新标签页加载时读取该 Key；若用户在 popup 中保存或更新 Key，new-tab 页面会通过 `chrome.storage.onChanged` 自动刷新天气数据（无需手动刷新页面）。
+
+### 测试 WeatherCard（本地开发）
+
+WeatherCard 使用浏览器地理定位（navigator.geolocation）来获取当前位置并请求 OpenWeather 接口；测试时请确保允许定位权限。
+
+如果你在本地测试遇到定位权限被拒绝，可以在浏览器地址栏手动允许或使用 Chrome 的站点设置放行定位。作为备用，你可以在 `WeatherCard.vue` 中临时硬编码经纬度以便调试。

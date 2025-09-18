@@ -1,0 +1,66 @@
+name: Build and release on tag
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Find release artifact
+        id: find_artifact
+        run: |
+          set -e
+          TAG=${GITHUB_REF##*/}
+          echo "Tag: $TAG"
+          # look for zip files under dist or release folder that contain the tag
+          FILE=$(find . -type f -name "crx-*${TAG}.zip" -print -quit || true)
+          if [ -z "$FILE" ]; then
+            # fallback: find any crx-*.zip and try to match tag inside filename
+            FILE=$(find . -type f -name "crx-*.zip" -print -quit || true)
+          fi
+          if [ -z "$FILE" ]; then
+            echo "No artifact found matching tag $TAG"
+            exit 1
+          fi
+          echo "Found file: $FILE"
+          BASENAME=$(basename "$FILE")
+          echo "artifact=$FILE" >> $GITHUB_OUTPUT
+          echo "artifact_name=$BASENAME" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          body: "Automated release for ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.find_artifact.outputs.artifact }}
+          asset_name: ${{ steps.find_artifact.outputs.artifact_name }}
+          asset_content_type: application/zip

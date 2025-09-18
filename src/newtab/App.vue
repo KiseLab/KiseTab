@@ -1,9 +1,10 @@
 <template>
   <div :class="['min-h-screen flex items-center justify-center', theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark']">
-    <div :class="['w-full max-w-xl px-6', hasFocus ? 'shift-up' : '']">
-      <Clock :is-collapsed="hasFocus" :time-str="timeStr" :gregorian="gregorian" :lunar="lunar" />
-      <SearchPanel v-model:query="query" v-model:engine="engine" v-model:has-focus="hasFocus" @search="onSearch" />
-    </div>
+      <div :class="['w-full max-w-xl px-6', hasFocus ? 'shift-up' : '']">
+        <div class="weather-wrap"><WeatherCard /></div>
+        <Clock :is-collapsed="hasFocus" :time-str="timeStr" :gregorian="gregorian" :lunar="lunar" />
+        <SearchPanel v-model:query="query" v-model:engine="engine" v-model:has-focus="hasFocus" @search="onSearch" />
+      </div>
   </div>
 </template>
 
@@ -11,6 +12,7 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import Clock from './components/Clock.vue'
 import SearchPanel from './components/SearchPanel.vue'
+import WeatherCard from './components/WeatherCard.vue'
 
 const defaultEngine = 'bing_cn'
 
@@ -130,4 +132,9 @@ function onSearch() {
 .text-dark { color: #222; }
 .bg-dark { background-color: #1e1e1e; }
 .text-light { color: #eee; }
+.weather-wrap{position:absolute;right:18px;top:18px;z-index:60}
+
+@media (max-width:720px){
+  .weather-wrap{display:none}
+}
 </style>

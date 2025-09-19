@@ -134,15 +134,25 @@ async function fetchWeather(lat: number, lon: number) {
           const localNames = item.local_names || {};
           const cityName = localNames.zh || localNames["zh-CN"] || item.name || "";
           const countryCode = item.country || "";
-          const countryName = COUNTRY_MAP[countryCode] || countryCode || "";
+          const countryMapped = COUNTRY_MAP[countryCode];
           const stateRaw = item.state || "";
-          const provinceName = PROVINCE_MAP[stateRaw] || stateRaw || "";
+          const provinceMapped = PROVINCE_MAP[stateRaw];
 
-          // 组装显示：优先显示 Country · Province · City（当省存在时），否则 Country · City
-          if (provinceName && countryName === "中国") {
-            city.value = countryName ? `${countryName} · ${provinceName} · ${cityName}` : `${provinceName} · ${cityName}`;
-          } else if (countryName) {
-            city.value = `${countryName} · ${cityName}`;
+          const countryPart = countryMapped || countryCode || "";
+          const provincePart = provinceMapped || stateRaw || "";
+
+          if (countryCode === 'CN') {
+            const parts = [] as string[];
+            if (countryPart) parts.push(countryPart);
+            if (provincePart) parts.push(provincePart);
+            if (cityName) parts.push(cityName);
+            city.value = parts.join(' · ');
+          } else if (countryPart) {
+            if (cityName) {
+              city.value = `${countryPart} · ${cityName}`;
+            } else {
+              city.value = countryPart;
+            }
           } else {
             city.value = cityName || "";
           }

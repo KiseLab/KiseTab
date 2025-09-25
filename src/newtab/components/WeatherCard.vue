@@ -56,6 +56,22 @@ const coords = ref<{ lat: number; lon: number } | null>(null);
 // storage change listener reference so we can remove it on unmount
 let storageListener: ((changes: any, areaName: string) => void) | null = null;
 
+const geolocationMethod = ref('ip'); // 'ip' or 'permission'
+
+async function getGeolocationMethod() {
+  try {
+    const win: any = window as any;
+    if (win.chrome && win.chrome.storage && win.chrome.storage.local) {
+      const result = await win.chrome.storage.local.get(['geolocation_method']);
+      return result.geolocation_method || 'ip';
+    }
+  } catch (e) {
+    // ignore
+  }
+  return localStorage.getItem('geolocation_method') || 'ip';
+}
+
+
 // helper to read stored key
 async function readApiKeyFromStorage() {
   try {
@@ -170,27 +186,55 @@ async function fetchWeather(lat: number, lon: number) {
   }
 }
 
-function getLocationAndFetch() {
-  if (!("geolocation" in navigator)) {
-    disabled.value = true;
+async function fetchCoordsByIp() {
+  try {
+    const res = await fetch('https://ipapi.co/latlong/');
+    if (!res.ok) throw new Error('IP-based geolocation failed');
+    const text = await res.text();
+    const [lat, lon] = text.split(',').map(Number);
+    if (lat && lon) {
+      return { lat, lon };
+    }
+    throw new Error('Invalid coordinates from IP API');
+  } catch (e) {
+    error.value = '无法通过 IP 获取地理位置';
     loading.value = false;
-    return;
+    return null;
   }
+}
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      coords.value = { lat, lon };
-      fetchWeather(lat, lon);
-    },
-    (err) => {
-      // permission denied or other errors
-      disabled.value = true;
-      loading.value = false;
-    },
-    { enableHighAccuracy: false, timeout: 8000, maximumAge: 1000 * 60 * 10 }
-  );
+function getLocationAndFetch() {
+  getGeolocationMethod().then(method => {
+    if (method === 'ip') {
+      fetchCoordsByIp().then(coords => {
+        if (coords) {
+          fetchWeather(coords.lat, coords.lon);
+        }
+      });
+    } else {
+      // Permission-based
+      if (!("geolocation" in navigator)) {
+        disabled.value = true;
+        loading.value = false;
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          coords.value = { lat, lon };
+          fetchWeather(lat, lon);
+        },
+        (err) => {
+          // permission denied or other errors
+          disabled.value = true;
+          loading.value = false;
+        },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 1000 * 60 * 10 }
+      );
+    }
+  });
 }
 
 onMounted(() => {
@@ -217,17 +261,16 @@ onMounted(() => {
   const win: any = window as any;
   storageListener = (changes: any, areaName: string) => {
     if (areaName !== "local") return;
-    if (changes.VITE_WEATHER_API_KEY) {
-      const newVal = changes.VITE_WEATHER_API_KEY.newValue || "";
-      apiKey.value = newVal;
+    if (changes.VITE_WEATHER_API_KEY || changes.geolocation_method) {
       // reset states and refetch
       loading.value = true;
       error.value = null;
-      if (coords.value) {
-        fetchWeather(coords.value.lat, coords.value.lon);
-      } else {
+      disabled.value = false;
+      
+      readApiKeyFromStorage().then(key => {
+        apiKey.value = key || '';
         getLocationAndFetch();
-      }
+      });
     }
   };
 
